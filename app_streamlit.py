@@ -55,6 +55,11 @@ fitur = st.sidebar.radio(
     ]
 )
 
+# Footer di Kiri Bawah (Sidebar)
+st.sidebar.markdown("---")
+st.sidebar.caption("👨‍💻 **Pengelola Web / Sistem:**")
+st.sidebar.caption("© 2026 Pembukuan Rokok Digital")
+
 # ---------------------------------------------------------
 # 4. HALAMAN DASHBOARD & LAPORAN
 # ---------------------------------------------------------
@@ -104,6 +109,10 @@ if fitur == "📊 Dashboard & Laporan Setoran":
         file_name='Laporan_Pembukuan_Rokok.csv',
         mime='text/csv',
     )
+    
+    # Footer di Kiri Bawah Halaman Utama
+    st.markdown("---")
+    st.caption("👨‍💻 *Managed by Hiran*")
 
 elif fitur == "➕ Restok (Barang Masuk)":
     st.title("➕ Input Restok Barang Masuk")
