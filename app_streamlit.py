@@ -1,44 +1,49 @@
 import streamlit as st
 import pandas as pd
-from streamlit_gsheets import GSheetsConnection
+import gspread
 
 # ---------------------------------------------------------
 # SETUP HALAMAN
 # ---------------------------------------------------------
 st.set_page_config(page_title="Pembukuan Penjualan Rokok", layout="wide")
 
-# Inisialisasi Koneksi Google Sheets
-conn = st.connection("gsheets", type=GSheetsConnection)
+# Link Spreadsheet milikmu
+SPREADSHEET_ID = "1DPwxjMcczOer5CUu2aknat7SLxAU-da-ECYmY67CcbI"
+SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit"
+CSV_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv"
 
+# ---------------------------------------------------------
+# KONEKSI GOOGLE SHEETS (GSPREAD)
+# ---------------------------------------------------------
 def load_data():
-    # Ambil data terbaru dari Google Sheets
-    df = conn.read(ttl=0)
-    
-    if df is None or df.empty:
+    try:
+        # BACA DATA VIA CSV PUBLIK
+        df = pd.read_csv(CSV_URL)
+        
+        numeric_cols = ["Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar"]
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+        return df
+    except Exception as e:
         return pd.DataFrame(columns=[
             "Kode", "Nama Barang", "Kategori", "Harga Beli", 
             "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"
         ])
-    
-    numeric_cols = ["Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar"]
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
-            
-    return df
 
 def save_data(df_to_save):
-    # Simpan/update data kembali ke Google Sheets
-    conn.update(data=df_to_save)
-    st.cache_data.clear()
+    # SIMPAN DATA KE GOOGLE SHEETS
+    gc = gspread.public_api()
+    sh = gc.open_by_url(SHEET_URL)
+    worksheet = sh.get_worksheet(0)
+    
+    # Hapus data lama dan ganti dengan data baru
+    worksheet.clear()
+    data_list = [df_to_save.columns.values.tolist()] + df_to_save.values.tolist()
+    worksheet.update(data_list)
 
 # Load Data
-try:
-    df_barang = load_data()
-except Exception as e:
-    st.error(f"Gagal terhubung ke Google Sheets. Pastikan Baris 1 di Google Sheet berisi nama kolom header. Error: {e}")
-    st.stop()
-
+df_barang = load_data()
 df = df_barang.copy()
 
 # ---------------------------------------------------------
@@ -110,7 +115,7 @@ if fitur == "📊 Dashboard & Laporan Setoran":
     
     st.subheader("📋 Laporan Detail Stok & Penjualan Per Produk")
     
-    if not df.empty:
+    if not df.empty and "Nama Barang" in df.columns:
         tabel_tampil = df[[
             "Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", 
             "Stok Awal", "Total Restok", "Total Keluar", "Sisa Stok", 
