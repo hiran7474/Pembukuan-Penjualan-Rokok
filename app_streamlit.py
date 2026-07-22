@@ -57,7 +57,7 @@ fitur = st.sidebar.radio(
 
 # Footer di mentok kiri bawah (satu baris)
 st.sidebar.markdown("---")
-st.sidebar.caption("👨‍💻 Managed by Hiran")
+st.sidebar.caption("👨‍💻 **Pengelola:** Hiran © 2026")
 
 # ---------------------------------------------------------
 # 4. HALAMAN DASHBOARD & LAPORAN
