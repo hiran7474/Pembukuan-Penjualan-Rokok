@@ -57,7 +57,7 @@ fitur = st.sidebar.radio(
 
 # Footer di Kiri Bawah (Sidebar)
 st.sidebar.markdown("---")
-st.sidebar.caption("👨‍💻 **Pengelola Web / Sistem:**")
+st.sidebar.caption("👨‍💻 **Managed by Hiran**")
 st.sidebar.caption("© 2026 Pembukuan Rokok Digital")
 
 # ---------------------------------------------------------
@@ -112,7 +112,7 @@ if fitur == "📊 Dashboard & Laporan Setoran":
     
     # Footer di Kiri Bawah Halaman Utama
     st.markdown("---")
-    st.caption("👨‍💻 *Managed by Hiran*")
+    st.caption("👨‍💻 *Dikembangkan & Dikelola oleh Admin Pembukuan Digital*")
 
 elif fitur == "➕ Restok (Barang Masuk)":
     st.title("➕ Input Restok Barang Masuk")
