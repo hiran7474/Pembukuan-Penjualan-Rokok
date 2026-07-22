@@ -20,6 +20,9 @@ WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxsXytoDYrX5oXMT9LXQ-4uUZ
 def load_data():
     try:
         df = pd.read_csv(CSV_URL)
+        # Hapus baris kosong/NaN pada kolom kunci
+        df = df.dropna(subset=["Kode", "Nama Barang"], how="any")
+        
         numeric_cols = ["Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar"]
         for col in numeric_cols:
             if col in df.columns:
@@ -32,7 +35,10 @@ def load_data():
         ])
 
 def save_data(df_to_save):
-    # Mengirim data terbaru ke Google Sheets via Google Apps Script
+    # Bersihkan baris kosong/NaN sebelum dikirim ke JSON
+    df_to_save = df_to_save.dropna(subset=["Kode", "Nama Barang"], how="any")
+    df_to_save = df_to_save.fillna("")
+    
     data_matrix = [df_to_save.columns.values.tolist()] + df_to_save.values.tolist()
     try:
         response = requests.post(WEB_APP_URL, json=data_matrix)
@@ -186,7 +192,6 @@ elif fitur == "🛒 Penjualan (Barang Keluar)":
 elif fitur == "⚙️ Kelola Master Barang":
     st.title("⚙️ Tambah Master Barang Baru")
     
-    # Mencegah ID terduplikasi
     next_id = len(df) + 1
     kode_default = f"BRG{next_id:03d}"
     
