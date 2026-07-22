@@ -130,7 +130,7 @@ elif fitur == "🛒 Penjualan (Barang Keluar)":
         st.warning("Belum ada data barang.")
 
 elif fitur == "⚙️ Kelola Master Barang":
-    st.title("⚙️ Kelola Master Barang Baru")
+    st.title("⚙️ Tambah Master Barang Baru")
     with st.form("form_barang_baru"):
         kode = st.text_input("Kode Barang:", value=f"BRG00{len(df)+1}")
         nama = st.text_input("Nama Barang:")
@@ -157,17 +157,18 @@ elif fitur == "⚙️ Kelola Master Barang":
 elif fitur == "🛠️ Edit / Hapus Barang & Reset":
     st.title("🛠️ Pengelolaan Data Barang & Reset")
     
-    tab1, tab2, tab3 = st.tabs(["✏️ Edit Data Barang", "🗑️ Hapus Barang", "🧹 Reset Transaksi"])
+    tab1, tab2, tab3, tab4 = st.tabs(["✏️ Edit Data Barang", "🆕 Tambah Barang Baru", "🗑️ Hapus Barang", "🧹 Reset Transaksi"])
     
     # --- TAB 1: EDIT BARANG ---
     with tab1:
-        st.subheader("✏️ Edit Detail & Harga Barang")
+        st.subheader("✏️ Edit Detail, Kode & Harga Barang")
         if len(df) > 0:
             pilih_edit = st.selectbox("Pilih Barang yang Ingin Di-edit:", df["Nama Barang"].tolist(), key="select_edit")
             idx = st.session_state.df_barang[st.session_state.df_barang["Nama Barang"] == pilih_edit].index[0]
             row = st.session_state.df_barang.loc[idx]
             
             with st.form("form_edit_barang"):
+                edit_kode = st.text_input("Kode Barang:", value=row["Kode"])
                 edit_nama = st.text_input("Nama Barang:", value=row["Nama Barang"])
                 edit_kat = st.selectbox("Kategori:", ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"], index=["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"].index(row["Kategori"]) if row["Kategori"] in ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"] else 0)
                 edit_hb = st.number_input("Harga Beli (Modal):", min_value=0, value=int(row["Harga Beli"]), step=1000)
@@ -176,6 +177,7 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
                 
                 simpan_edit = st.form_submit_button("Simpan Perubahan")
                 if simpan_edit:
+                    st.session_state.df_barang.at[idx, "Kode"] = edit_kode
                     st.session_state.df_barang.at[idx, "Nama Barang"] = edit_nama
                     st.session_state.df_barang.at[idx, "Kategori"] = edit_kat
                     st.session_state.df_barang.at[idx, "Harga Beli"] = edit_hb
@@ -185,9 +187,32 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
                     st.rerun()
         else:
             st.info("Tidak ada data barang untuk di-edit.")
-            
-    # --- TAB 2: HAPUS BARANG ---
+
+    # --- TAB 2: TAMBAH BARANG BARU ---
     with tab2:
+        st.subheader("🆕 Tambah Barang Baru")
+        with st.form("form_tambah_barang_tab"):
+            t_kode = st.text_input("Kode Barang:", value=f"BRG00{len(df)+1}", key="t_kode")
+            t_nama = st.text_input("Nama Barang:", key="t_nama")
+            t_kategori = st.selectbox("Kategori:", ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"], key="t_kat")
+            t_harga_beli = st.number_input("Harga Beli Modal (per Slop):", min_value=0, step=1000, key="t_hb")
+            t_harga_jual = st.number_input("Harga Jual (per Slop):", min_value=0, step=1000, key="t_hj")
+            t_stok_awal = st.number_input("Stok Awal:", min_value=0, step=1, key="t_sa")
+            t_satuan = st.text_input("Satuan:", value="Slop", key="t_sat")
+            
+            t_submitted = st.form_submit_button("Tambah Barang Baru")
+            if t_submitted:
+                b_baru = {
+                    "Kode": t_kode, "Nama Barang": t_nama, "Kategori": t_kategori, 
+                    "Harga Beli": t_harga_beli, "Harga Jual": t_harga_jual, 
+                    "Stok Awal": t_stok_awal, "Total Restok": 0, "Total Keluar": 0, "Satuan": t_satuan
+                }
+                st.session_state.df_barang = pd.concat([st.session_state.df_barang, pd.DataFrame([b_baru])], ignore_index=True)
+                st.success(f"Barang {t_nama} berhasil ditambahkan!")
+                st.rerun()
+            
+    # --- TAB 3: HAPUS BARANG ---
+    with tab3:
         st.subheader("🗑️ Hapus Barang dari Sistem")
         if len(df) > 0:
             pilih_hapus = st.selectbox("Pilih Barang yang Ingin Dihapus:", df["Nama Barang"].tolist(), key="select_hapus")
@@ -198,8 +223,8 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
         else:
             st.info("Tidak ada data barang untuk dihapus.")
             
-    # --- TAB 3: RESET TRANSAKSI ---
-    with tab3:
+    # --- TAB 4: RESET TRANSAKSI ---
+    with tab4:
         st.subheader("🧹 Reset Angka Transaksi")
         st.warning("Fitur ini akan mengosongkan angka Restok dan Penjualan menjadi 0 tanpa menghapus daftar barangnya.")
         if st.button("Reset Semua Transaksi Penjualan & Restok"):
