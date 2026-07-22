@@ -9,10 +9,10 @@ st.set_page_config(page_title="Pembukuan Rokok", layout="wide")
 # ---------------------------------------------------------
 if 'df_barang' not in st.session_state:
     st.session_state.df_barang = pd.DataFrame([
-        {"Kode": "BRG001", "Nama Barang": "Sampoerna Mild 16", "Kategori": "Rokok Filter", "Harga Beli": 28000, "Harga Jual": 31000, "Stok Awal": 50, "Total Restok": 20, "Total Keluar": 12, "Satuan": "Slop"},
-        {"Kode": "BRG002", "Nama Barang": "Gudang Garam Surya 12", "Kategori": "Rokok Filter", "Harga Beli": 22000, "Harga Jual": 24500, "Stok Awal": 30, "Total Restok": 15, "Total Keluar": 10, "Satuan": "Slop"},
-        {"Kode": "BRG003", "Nama Barang": "Djarum Super 12", "Kategori": "Rokok Filter", "Harga Beli": 21000, "Harga Jual": 23500, "Stok Awal": 15, "Total Restok": 0, "Total Keluar": 0, "Satuan": "Slop"},
-        {"Kode": "BRG004", "Nama Barang": "Dji Sam Soe 234 12", "Kategori": "Rokok Kretek", "Harga Beli": 20000, "Harga Jual": 22000, "Stok Awal": 40, "Total Restok": 0, "Total Keluar": 0, "Satuan": "Slop"}
+        {"Kode": "BRG001", "Nama Barang": "Sampoerna Mild 16", "Kategori": "Rokok Filter", "Harga Beli": 28000, "Harga Jual": 31000, "Stok Awal": 50, "Total Restok": 20, "Total Keluar": 12, "Satuan": "Bungkus"},
+        {"Kode": "BRG002", "Nama Barang": "Gudang Garam Surya 12", "Kategori": "Rokok Filter", "Harga Beli": 22000, "Harga Jual": 24500, "Stok Awal": 30, "Total Restok": 15, "Total Keluar": 10, "Satuan": "Bungkus"},
+        {"Kode": "BRG003", "Nama Barang": "Djarum Super 12", "Kategori": "Rokok Filter", "Harga Beli": 21000, "Harga Jual": 23500, "Stok Awal": 15, "Total Restok": 0, "Total Keluar": 0, "Satuan": "Bungkus"},
+        {"Kode": "BRG004", "Nama Barang": "Dji Sam Soe 234 12", "Kategori": "Rokok Kretek", "Harga Beli": 20000, "Harga Jual": 22000, "Stok Awal": 40, "Total Restok": 0, "Total Keluar": 0, "Satuan": "Bungkus"}
     ])
 
 df = st.session_state.df_barang.copy()
@@ -85,14 +85,21 @@ if fitur == "📊 Dashboard & Laporan Setoran":
     
     st.subheader("📋 Laporan Detail Stok & Penjualan Per Produk")
     
+    # Format Tampilan Tabel dengan Titik Pemisah Ribuan untuk Angka Rupiah
     tabel_tampil = df[[
         "Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", 
         "Stok Awal", "Total Restok", "Total Keluar", "Sisa Stok", 
         "Total Omset", "Total HPP (Modal)", "Laba Kotor Total", "Satuan"
-    ]]
+    ]].copy()
     
-    st.dataframe(tabel_tampil, use_container_width=True)
+    # Tampilan yang sudah diformat dengan titik (.)
+    tabel_formatted = tabel_tampil.copy()
+    for col in ["Harga Beli", "Harga Jual", "Total Omset", "Total HPP (Modal)", "Laba Kotor Total"]:
+        tabel_formatted[col] = tabel_formatted[col].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
     
+    st.dataframe(tabel_formatted, use_container_width=True)
+    
+    # Download file menggunakan data asli angka murni agar tidak merusak rumus Excel
     csv_data = tabel_tampil.to_csv(index=False).encode('utf-8')
     st.download_button(
         label="📥 Unduh Laporan Stok & Keuangan (CSV / Excel)",
@@ -105,12 +112,12 @@ elif fitur == "➕ Restok (Barang Masuk)":
     st.title("➕ Input Restok Barang Masuk")
     if len(df) > 0:
         pilihan_barang = st.selectbox("Pilih Barang:", df["Nama Barang"].tolist())
-        jumlah_masuk = st.number_input("Jumlah Masuk (Slop):", min_value=1, step=1)
+        jumlah_masuk = st.number_input("Jumlah Masuk (Bungkus):", min_value=1, step=1)
         
         if st.button("Simpan Restok"):
             idx = st.session_state.df_barang[st.session_state.df_barang["Nama Barang"] == pilihan_barang].index[0]
             st.session_state.df_barang.at[idx, "Total Restok"] += jumlah_masuk
-            st.success(f"Berhasil menambahkan restok {jumlah_masuk} Slop untuk {pilihan_barang}!")
+            st.success(f"Berhasil menambahkan restok {jumlah_masuk} Bungkus untuk {pilihan_barang}!")
             st.rerun()
     else:
         st.warning("Belum ada data barang.")
@@ -119,12 +126,12 @@ elif fitur == "🛒 Penjualan (Barang Keluar)":
     st.title("🛒 Input Penjualan Barang Keluar")
     if len(df) > 0:
         pilihan_barang = st.selectbox("Pilih Barang:", df["Nama Barang"].tolist())
-        jumlah_keluar = st.number_input("Jumlah Keluar / Terjual (Slop):", min_value=1, step=1)
+        jumlah_keluar = st.number_input("Jumlah Keluar / Terjual (Bungkus):", min_value=1, step=1)
         
         if st.button("Simpan Penjualan"):
             idx = st.session_state.df_barang[st.session_state.df_barang["Nama Barang"] == pilihan_barang].index[0]
             st.session_state.df_barang.at[idx, "Total Keluar"] += jumlah_keluar
-            st.success(f"Berhasil mencatat penjualan {jumlah_keluar} Slop untuk {pilihan_barang}!")
+            st.success(f"Berhasil mencatat penjualan {jumlah_keluar} Bungkus untuk {pilihan_barang}!")
             st.rerun()
     else:
         st.warning("Belum ada data barang.")
@@ -135,10 +142,10 @@ elif fitur == "⚙️ Kelola Master Barang":
         kode = st.text_input("Kode Barang:", value=f"BRG00{len(df)+1}")
         nama = st.text_input("Nama Barang:")
         kategori = st.selectbox("Kategori:", ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"])
-        harga_beli = st.number_input("Harga Beli Modal (per Slop):", min_value=0, step=1000)
-        harga_jual = st.number_input("Harga Jual (per Slop):", min_value=0, step=1000)
-        stok_awal = st.number_input("Stok Awal:", min_value=0, step=1)
-        satuan = st.text_input("Satuan:", value="Slop")
+        harga_beli = st.number_input("Harga Beli Modal (per Bungkus):", min_value=0, step=1000)
+        harga_jual = st.number_input("Harga Jual (per Bungkus):", min_value=0, step=1000)
+        stok_awal = st.number_input("Stok Awal (Bungkus):", min_value=0, step=1)
+        satuan = st.text_input("Satuan:", value="Bungkus")
         
         submitted = st.form_submit_button("Tambah Barang")
         if submitted:
@@ -171,9 +178,10 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
                 edit_kode = st.text_input("Kode Barang:", value=row["Kode"])
                 edit_nama = st.text_input("Nama Barang:", value=row["Nama Barang"])
                 edit_kat = st.selectbox("Kategori:", ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"], index=["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"].index(row["Kategori"]) if row["Kategori"] in ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"] else 0)
-                edit_hb = st.number_input("Harga Beli (Modal):", min_value=0, value=int(row["Harga Beli"]), step=1000)
+                edit_hb = st.number_input("Harga Beli Modal:", min_value=0, value=int(row["Harga Beli"]), step=1000)
                 edit_hj = st.number_input("Harga Jual:", min_value=0, value=int(row["Harga Jual"]), step=1000)
-                edit_sa = st.number_input("Stok Awal:", min_value=0, value=int(row["Stok Awal"]), step=1)
+                edit_sa = st.number_input("Stok Awal (Bungkus):", min_value=0, value=int(row["Stok Awal"]), step=1)
+                edit_sat = st.text_input("Satuan:", value=row["Satuan"])
                 
                 simpan_edit = st.form_submit_button("Simpan Perubahan")
                 if simpan_edit:
@@ -183,6 +191,7 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
                     st.session_state.df_barang.at[idx, "Harga Beli"] = edit_hb
                     st.session_state.df_barang.at[idx, "Harga Jual"] = edit_hj
                     st.session_state.df_barang.at[idx, "Stok Awal"] = edit_sa
+                    st.session_state.df_barang.at[idx, "Satuan"] = edit_sat
                     st.success(f"Data barang {edit_nama} berhasil diperbarui!")
                     st.rerun()
         else:
@@ -195,10 +204,10 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
             t_kode = st.text_input("Kode Barang:", value=f"BRG00{len(df)+1}", key="t_kode")
             t_nama = st.text_input("Nama Barang:", key="t_nama")
             t_kategori = st.selectbox("Kategori:", ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"], key="t_kat")
-            t_harga_beli = st.number_input("Harga Beli Modal (per Slop):", min_value=0, step=1000, key="t_hb")
-            t_harga_jual = st.number_input("Harga Jual (per Slop):", min_value=0, step=1000, key="t_hj")
-            t_stok_awal = st.number_input("Stok Awal:", min_value=0, step=1, key="t_sa")
-            t_satuan = st.text_input("Satuan:", value="Slop", key="t_sat")
+            t_harga_beli = st.number_input("Harga Beli Modal (per Bungkus):", min_value=0, step=1000, key="t_hb")
+            t_harga_jual = st.number_input("Harga Jual (per Bungkus):", min_value=0, step=1000, key="t_hj")
+            t_stok_awal = st.number_input("Stok Awal (Bungkus):", min_value=0, step=1, key="t_sa")
+            t_satuan = st.text_input("Satuan:", value="Bungkus", key="t_sat")
             
             t_submitted = st.form_submit_button("Tambah Barang Baru")
             if t_submitted:
