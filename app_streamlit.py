@@ -1,46 +1,50 @@
 import streamlit as st
 import pandas as pd
-import gspread
+import requests
 
 # ---------------------------------------------------------
 # SETUP HALAMAN
 # ---------------------------------------------------------
 st.set_page_config(page_title="Pembukuan Penjualan Rokok", layout="wide")
 
-# Link Spreadsheet milikmu
+# ID Spreadsheet & URL Web App Google
 SPREADSHEET_ID = "1DPwxjMcczOer5CUu2aknat7SLxAU-da-ECYmY67CcbI"
-SHEET_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv"
 
+# ⚠️ TEMPELKAN LINK WEB APP DARI GOOGLE APPS SCRIPT DI SINI:
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxsXytoDYrX5oXMT9LXQ-4uUZUXCPPAfJo-dt7NqjCZFUhPIjID54ulrq_Pq0qnRqLq/exec"
+
 # ---------------------------------------------------------
-# KONEKSI GOOGLE SHEETS (GSPREAD)
+# KONEKSI GOOGLE SHEETS VIA WEB APP
 # ---------------------------------------------------------
 def load_data():
     try:
-        # BACA DATA VIA CSV PUBLIK
         df = pd.read_csv(CSV_URL)
-        
         numeric_cols = ["Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar"]
         for col in numeric_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
         return df
-    except Exception as e:
+    except Exception:
         return pd.DataFrame(columns=[
             "Kode", "Nama Barang", "Kategori", "Harga Beli", 
             "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"
         ])
 
 def save_data(df_to_save):
-    # SIMPAN DATA KE GOOGLE SHEETS
-    gc = gspread.public_api()
-    sh = gc.open_by_url(SHEET_URL)
-    worksheet = sh.get_worksheet(0)
-    
-    # Hapus data lama dan ganti dengan data baru
-    worksheet.clear()
-    data_list = [df_to_save.columns.values.tolist()] + df_to_save.values.tolist()
-    worksheet.update(data_list)
+    # Mengirim data terbaru ke Google Sheets via Google Apps Script
+    data_matrix = [df_to_save.columns.values.tolist()] + df_to_save.values.tolist()
+    try:
+        response = requests.post(WEB_APP_URL, json=data_matrix)
+        if response.status_code == 200:
+            st.cache_data.clear()
+            return True
+        else:
+            st.error("Gagal menyimpan ke Google Sheets. Pastikan Web App URL sudah benar.")
+            return False
+    except Exception as e:
+        st.error(f"Terjadi kesalahan koneksi: {e}")
+        return False
 
 # Load Data
 df_barang = load_data()
@@ -151,9 +155,9 @@ elif fitur == "➕ Restok (Barang Masuk)":
             idx = df[df["Nama Barang"] == pilihan_barang].index[0]
             df.at[idx, "Total Restok"] += jumlah_masuk
             
-            save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]])
-            st.success(f"Berhasil menambahkan restok {jumlah_masuk} Bungkus untuk {pilihan_barang}!")
-            st.rerun()
+            if save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]]):
+                st.success(f"Berhasil menambahkan restok {jumlah_masuk} Bungkus untuk {pilihan_barang}!")
+                st.rerun()
     else:
         st.warning("Belum ada data barang di Google Sheets.")
 
@@ -170,9 +174,9 @@ elif fitur == "🛒 Penjualan (Barang Keluar)":
             idx = df[df["Nama Barang"] == pilihan_barang].index[0]
             df.at[idx, "Total Keluar"] += jumlah_keluar
             
-            save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]])
-            st.success(f"Berhasil mencatat penjualan {jumlah_keluar} Bungkus untuk {pilihan_barang}!")
-            st.rerun()
+            if save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]]):
+                st.success(f"Berhasil mencatat penjualan {jumlah_keluar} Bungkus untuk {pilihan_barang}!")
+                st.rerun()
     else:
         st.warning("Belum ada data barang di Google Sheets.")
 
@@ -201,9 +205,9 @@ elif fitur == "⚙️ Kelola Master Barang":
                     "Stok Awal": stok_awal, "Total Restok": 0, "Total Keluar": 0, "Satuan": satuan
                 }
                 df_update = pd.concat([df, pd.DataFrame([baris_baru])], ignore_index=True)
-                save_data(df_update[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]])
-                st.success(f"Barang {nama} berhasil ditambahkan!")
-                st.rerun()
+                if save_data(df_update[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]]):
+                    st.success(f"Barang {nama} berhasil ditambahkan!")
+                    st.rerun()
 
 # ---------------------------------------------------------
 # 5. EDIT, HAPUS & RESET
@@ -244,9 +248,9 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
                     df.at[idx, "Harga Jual"] = edit_hj
                     df.at[idx, "Stok Awal"] = edit_sa
                     df.at[idx, "Satuan"] = edit_sat
-                    save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]])
-                    st.success(f"Data {edit_nama} berhasil diperbarui!")
-                    st.rerun()
+                    if save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]]):
+                        st.success(f"Data {edit_nama} berhasil diperbarui!")
+                        st.rerun()
 
     # KOREKSI TRANSAKSI
     with tab2:
@@ -264,9 +268,9 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
                 if simpan_koreksi:
                     df.at[idx_k, "Total Restok"] = kor_restok
                     df.at[idx_k, "Total Keluar"] = kor_keluar
-                    save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]])
-                    st.success(f"Koreksi transaksi {row_k['Nama Barang']} berhasil disimpan!")
-                    st.rerun()
+                    if save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]]):
+                        st.success(f"Koreksi transaksi {row_k['Nama Barang']} berhasil disimpan!")
+                        st.rerun()
 
     # HAPUS BARANG
     with tab3:
@@ -275,9 +279,9 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
             pilih_hapus = st.selectbox("Pilih Barang yang Ingin Dihapus:", df["Nama Barang"].tolist(), key="select_hapus")
             if st.button("❌ Hapus Barang Ini", type="primary"):
                 df = df[df["Nama Barang"] != pilih_hapus].reset_index(drop=True)
-                save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]])
-                st.success(f"Barang {pilih_hapus} berhasil dihapus!")
-                st.rerun()
+                if save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]]):
+                    st.success(f"Barang {pilih_hapus} berhasil dihapus!")
+                    st.rerun()
 
     # RESET TRANSAKSI
     with tab4:
@@ -285,6 +289,6 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
         if st.button("Reset Semua Transaksi Penjualan & Restok"):
             df["Total Restok"] = 0
             df["Total Keluar"] = 0
-            save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]])
-            st.success("Semua angka penjualan & restok berhasil di-reset ke 0!")
-            st.rerun()
+            if save_data(df[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]]):
+                st.success("Semua angka penjualan & restok berhasil di-reset ke 0!")
+                st.rerun()
