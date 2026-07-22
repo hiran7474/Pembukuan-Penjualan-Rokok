@@ -1,8 +1,11 @@
 import streamlit as st
 import pandas as pd
 
+# Page config biar rapi & lebar
+st.set_page_config(page_title="Pembukuan Rokok", layout="wide")
+
 # ---------------------------------------------------------
-# 1. INISIALISASI DATABASE & DATA DUMMY
+# 1. DATABASE & SESSION STATE
 # ---------------------------------------------------------
 if 'df_barang' not in st.session_state:
     st.session_state.df_barang = pd.DataFrame([
@@ -31,49 +34,60 @@ total_cash_omset = df["Total Omset"].sum()
 total_modal_hpp = df["Total HPP (Modal)"].sum()
 total_laba_kotor = df["Laba Kotor Total"].sum()
 
-# Pembagian Keuangan (Bagi Hasil 50%)
-pengembalian_modal = total_modal_hpp
-setoran_pemilik_modal = pengembalian_modal + (total_laba_kotor * 0.50)
-bagian_pengelola = total_laba_kotor * 0.50
+# Pembagian Keuangan 50:50
+bagi_hasil = total_laba_kotor * 0.50
+setoran_pemilik = total_modal_hpp + bagi_hasil
+bagian_pengelola = bagi_hasil
 
 # ---------------------------------------------------------
 # 3. SIDEBAR MENU
 # ---------------------------------------------------------
-st.sidebar.title("📦 Menu Pembukuan Rokok")
+st.sidebar.title("📦 Menu Utama")
 
 fitur = st.sidebar.radio(
     "Pilih Fitur:",
-    ["📊 Dashboard & Laporan", "➕ Restok (Barang Masuk)", "🛒 Penjualan (Barang Keluar)", "🆕 Tambah Barang Baru"]
+    [
+        "📊 Dashboard & Laporan Setoran", 
+        "➕ Restok (Barang Masuk)", 
+        "🛒 Penjualan (Barang Keluar)", 
+        "⚙️ Kelola Master Barang", 
+        "🧹 Hapus/Edit Riwayat & Reset"
+    ]
 )
 
 # ---------------------------------------------------------
-# 4. HALAMAN UTAMA / DASHBOARD
+# 4. HALAMAN DASHBOARD & LAPORAN
 # ---------------------------------------------------------
-if fitur == "📊 Dashboard & Laporan":
-    st.title("📋 Laporan Realtime Stok & Keuangan Toko Rokok")
-    st.caption("Sistem Pembukuan Otomatis & Skema Bagi Hasil 50%")
+if fitur == "📊 Dashboard & Laporan Setoran":
     
-    # KARTU STOK METRICS
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Jenis Barang", f"{total_jenis}")
-    col2.metric("Total Restok Masuk", f"{total_restok} Slop")
-    col3.metric("Total Barang Keluar", f"{total_keluar} Slop")
-    col4.metric("Stok Menipis (<=10)", f"{stok_menipis}")
+    # --- RINGKASAN UANG PENJUALAN ---
+    st.subheader("💰 Ringkasan Uang Penjualan Terkumpul")
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Total Cash Omset Penjualan", f"Rp {total_cash_omset:,.0f}".replace(",", "."))
+    m2.metric("Pengembalian Modal (HPP)", f"Rp {total_modal_hpp:,.0f}".replace(",", "."))
+    m3.metric("Total Laba Bersih/Kotor", f"Rp {total_laba_kotor:,.0f}".replace(",", "."))
     
     st.markdown("---")
     
-    # KARTU KEUANGAN METRICS
-    st.subheader("💰 Ringkasan Kas & Bagi Hasil (50:50)")
-    f1, f2, f3, f4 = st.columns(4)
-    f1.metric("💵 Total Omset / Cash", f"Rp {total_cash_omset:,.0f}")
-    f2.metric("📦 Modal Terjual (HPP)", f"Rp {total_modal_hpp:,.0f}")
-    f3.metric("👑 Setoran Pemilik Modal", f"Rp {setoran_pemilik_modal:,.0f}", delta="Modal + 50% Profit")
-    f4.metric("👨‍💼 Bagian Pengelola", f"Rp {bagian_pengelola:,.0f}", delta="50% Profit")
+    # --- RINCIAN PEMBAGIAN SETORAN ---
+    st.subheader("🤝 Rincian Pembagian Setoran & Profit (50:50)")
+    r1, r2, r3 = st.columns(3)
+    r1.metric("🏦 SETORAN KE PEMILIK MODAL", f"Rp {setoran_pemilik:,.0f}".replace(",", "."))
+    r2.metric("👤 Bagi Hasil Pemilik (50%)", f"Rp {bagi_hasil:,.0f}".replace(",", "."))
+    r3.metric("🧑‍💼 Bagi Hasil Pengelola (50%)", f"Rp {bagian_pengelola:,.0f}".replace(",", "."))
+    
+    # Kotak Penjelasan Kas (Biru)
+    st.info(
+        f"💡 **Penjelasan Kas:** Dari total uang tunai terkumpul (Rp {total_cash_omset:,.0f}), "
+        f"sebesar **Rp {setoran_pemilik:,.0f}** disetorkan ke Pemilik Modal "
+        f"(Pengembalian Modal Rp {total_modal_hpp:,.0f} + 50% Laba Rp {bagi_hasil:,.0f}). "
+        f"Pengelola mengantongi **Rp {bagian_pengelola:,.0f}**.".replace(",", ".")
+    )
     
     st.markdown("---")
     
-    # TABEL LAPORAN REALTIME
-    st.subheader("📝 Laporan Realtime Stok & Profit per Barang")
+    # --- LAPORAN DETAIL TABEL ---
+    st.subheader("📋 Laporan Detail Stok & Penjualan Per Produk")
     
     tabel_tampil = df[[
         "Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", 
@@ -83,8 +97,7 @@ if fitur == "📊 Dashboard & Laporan":
     
     st.dataframe(tabel_tampil, use_container_width=True)
     
-    # 📥 FITUR TOMBOL DOWNLOAD FILE CSV / EXCEL
-    st.write("### 📥 Unduh Laporan")
+    # Tombol Unduh File
     csv_data = tabel_tampil.to_csv(index=False).encode('utf-8')
     st.download_button(
         label="📥 Unduh Laporan Stok & Keuangan (CSV / Excel)",
@@ -115,11 +128,11 @@ elif fitur == "🛒 Penjualan (Barang Keluar)":
         st.success(f"Berhasil mencatat penjualan {jumlah_keluar} Slop untuk {pilihan_barang}!")
         st.rerun()
 
-elif fitur == "🆕 Tambah Barang Baru":
-    st.title("🆕 Tambah Master Barang Baru")
+elif fitur == "⚙️ Kelola Master Barang":
+    st.title("⚙️ Kelola Master Barang Baru")
     with st.form("form_barang_baru"):
         kode = st.text_input("Kode Barang:", value=f"BRG00{len(df)+1}")
-        nama = st.text_input("Nama Barang (Contoh: Magnum Filter):")
+        nama = st.text_input("Nama Barang:")
         kategori = st.selectbox("Kategori:", ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"])
         harga_beli = st.number_input("Harga Beli Modal (per Slop):", min_value=0, step=1000)
         harga_jual = st.number_input("Harga Jual (per Slop):", min_value=0, step=1000)
@@ -136,3 +149,12 @@ elif fitur == "🆕 Tambah Barang Baru":
             st.session_state.df_barang = pd.concat([st.session_state.df_barang, pd.DataFrame([baris_baru])], ignore_index=True)
             st.success(f"Barang {nama} berhasil ditambahkan!")
             st.rerun()
+
+elif fitur == "🧹 Hapus/Edit Riwayat & Reset":
+    st.title("🧹 Reset / Clear Data")
+    st.warning("Gunakan fitur ini jika ingin mengosongkan/mereset angka penjualan.")
+    if st.button("Reset Transaksi Penjualan & Restok"):
+        st.session_state.df_barang["Total Restok"] = 0
+        st.session_state.df_barang["Total Keluar"] = 0
+        st.success("Semua angka penjualan & restok berhasil di-reset!")
+        st.rerun()
