@@ -1,53 +1,48 @@
 import streamlit as st
 import pandas as pd
-import gspread
-
-# Page config
-st.set_page_config(page_title="Pembukuan Rokok", layout="wide")
-
-# Link Google Sheet milikmu
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1DPwxjMcczOer5CUu2aknat7SLxAU-da-ECYmY67CcbI/edit?gid=1027939768#gid=1027939768"
+from streamlit_gsheets import GSheetsConnection
 
 # ---------------------------------------------------------
-# 1. KONEKSI GOOGLE SHEETS VIA GSPREAD
+# SETUP HALAMAN
 # ---------------------------------------------------------
-@st.cache_resource
-def get_gsheet_client():
-    return gspread.public_api()
+st.set_page_config(page_title="Pembukuan Penjualan Rokok", layout="wide")
+
+# Inisialisasi Koneksi Google Sheets
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 def load_data():
-    gc = get_gsheet_client()
-    sh = gc.open_by_url(SHEET_URL)
-    worksheet = sh.get_worksheet(0)
-    data = worksheet.get_all_records()
-    df = pd.DataFrame(data)
+    # Ambil data terbaru dari Google Sheets
+    df = conn.read(ttl=0)
+    
+    if df is None or df.empty:
+        return pd.DataFrame(columns=[
+            "Kode", "Nama Barang", "Kategori", "Harga Beli", 
+            "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"
+        ])
     
     numeric_cols = ["Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar"]
     for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+            
     return df
 
 def save_data(df_to_save):
-    gc = get_gsheet_client()
-    sh = gc.open_by_url(SHEET_URL)
-    worksheet = sh.get_worksheet(0)
-    
-    # Overwrite data
-    worksheet.clear()
-    worksheet.update([df_to_save.columns.values.tolist()] + df_to_save.values.tolist())
+    # Simpan/update data kembali ke Google Sheets
+    conn.update(data=df_to_save)
+    st.cache_data.clear()
 
 # Load Data
 try:
     df_barang = load_data()
 except Exception as e:
-    st.error("Gagal membaca Google Sheets. Pastikan akses Google Sheet sudah di-set 'Siapa saja yang memiliki link -> Editor'.")
+    st.error(f"Gagal terhubung ke Google Sheets. Pastikan Baris 1 di Google Sheet berisi nama kolom header. Error: {e}")
     st.stop()
 
 df = df_barang.copy()
 
 # ---------------------------------------------------------
-# 2. KALKULASI FINANSIAL & STOK
+# KALKULASI FINANSIAL & STOK
 # ---------------------------------------------------------
 if not df.empty and "Stok Awal" in df.columns:
     df["Sisa Stok"] = df["Stok Awal"] + df["Total Restok"] - df["Total Keluar"]
@@ -67,7 +62,7 @@ else:
     bagi_hasil = setoran_pemilik = bagian_pengelola = 0
 
 # ---------------------------------------------------------
-# 3. SIDEBAR MENU
+# SIDEBAR MENU
 # ---------------------------------------------------------
 st.sidebar.title("📦 Menu Utama")
 
@@ -83,10 +78,10 @@ fitur = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.caption("👨‍💻 **Admin:** HIran © 2026")
+st.sidebar.caption("👨‍💻 **Pengelola:** Hiran © 2026")
 
 # ---------------------------------------------------------
-# 4. HALAMAN DASHBOARD
+# 1. HALAMAN DASHBOARD
 # ---------------------------------------------------------
 if fitur == "📊 Dashboard & Laporan Setoran":
     
@@ -130,7 +125,7 @@ if fitur == "📊 Dashboard & Laporan Setoran":
         
         csv_data = tabel_tampil.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📥 Unduh Laporan Stok & Keuangan (CSV / Excel)",
+            label="📥 Unduh Laporan Stok & Keuangan (CSV)",
             data=csv_data,
             file_name='Laporan_Pembukuan_Rokok.csv',
             mime='text/csv',
@@ -139,11 +134,11 @@ if fitur == "📊 Dashboard & Laporan Setoran":
         st.warning("Belum ada data barang di Google Sheets.")
 
 # ---------------------------------------------------------
-# 5. RESTOK (BARANG MASUK)
+# 2. RESTOK (BARANG MASUK)
 # ---------------------------------------------------------
 elif fitur == "➕ Restok (Barang Masuk)":
     st.title("➕ Input Restok Barang Masuk")
-    if not df.empty:
+    if not df.empty and "Nama Barang" in df.columns:
         pilihan_barang = st.selectbox("Pilih Barang:", df["Nama Barang"].tolist())
         jumlah_masuk = st.number_input("Jumlah Masuk (Bungkus):", min_value=1, step=1)
         
@@ -155,14 +150,14 @@ elif fitur == "➕ Restok (Barang Masuk)":
             st.success(f"Berhasil menambahkan restok {jumlah_masuk} Bungkus untuk {pilihan_barang}!")
             st.rerun()
     else:
-        st.warning("Belum ada data barang.")
+        st.warning("Belum ada data barang di Google Sheets.")
 
 # ---------------------------------------------------------
-# 6. PENJUALAN (BARANG KELUAR)
+# 3. PENJUALAN (BARANG KELUAR)
 # ---------------------------------------------------------
 elif fitur == "🛒 Penjualan (Barang Keluar)":
     st.title("🛒 Input Penjualan Barang Keluar")
-    if not df.empty:
+    if not df.empty and "Nama Barang" in df.columns:
         pilihan_barang = st.selectbox("Pilih Barang:", df["Nama Barang"].tolist())
         jumlah_keluar = st.number_input("Jumlah Keluar / Terjual (Bungkus):", min_value=1, step=1)
         
@@ -174,10 +169,10 @@ elif fitur == "🛒 Penjualan (Barang Keluar)":
             st.success(f"Berhasil mencatat penjualan {jumlah_keluar} Bungkus untuk {pilihan_barang}!")
             st.rerun()
     else:
-        st.warning("Belum ada data barang.")
+        st.warning("Belum ada data barang di Google Sheets.")
 
 # ---------------------------------------------------------
-# 7. KELOLA MASTER BARANG
+# 4. KELOLA MASTER BARANG
 # ---------------------------------------------------------
 elif fitur == "⚙️ Kelola Master Barang":
     st.title("⚙️ Tambah Master Barang Baru")
@@ -192,18 +187,21 @@ elif fitur == "⚙️ Kelola Master Barang":
         
         submitted = st.form_submit_button("Tambah Barang Ke Google Sheets")
         if submitted:
-            baris_baru = {
-                "Kode": kode, "Nama Barang": nama, "Kategori": kategori, 
-                "Harga Beli": harga_beli, "Harga Jual": harga_jual, 
-                "Stok Awal": stok_awal, "Total Restok": 0, "Total Keluar": 0, "Satuan": satuan
-            }
-            df_update = pd.concat([df, pd.DataFrame([baris_baru])], ignore_index=True)
-            save_data(df_update[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]])
-            st.success(f"Barang {nama} berhasil ditambahkan!")
-            st.rerun()
+            if not nama:
+                st.error("Nama Barang tidak boleh kosong!")
+            else:
+                baris_baru = {
+                    "Kode": kode, "Nama Barang": nama, "Kategori": kategori, 
+                    "Harga Beli": harga_beli, "Harga Jual": harga_jual, 
+                    "Stok Awal": stok_awal, "Total Restok": 0, "Total Keluar": 0, "Satuan": satuan
+                }
+                df_update = pd.concat([df, pd.DataFrame([baris_baru])], ignore_index=True)
+                save_data(df_update[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]])
+                st.success(f"Barang {nama} berhasil ditambahkan!")
+                st.rerun()
 
 # ---------------------------------------------------------
-# 8. EDIT, HAPUS & RESET
+# 5. EDIT, HAPUS & RESET
 # ---------------------------------------------------------
 elif fitur == "🛠️ Edit / Hapus Barang & Reset":
     st.title("🛠️ Pengelolaan Data Barang & Reset")
@@ -218,7 +216,7 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
     # EDIT MASTER
     with tab1:
         st.subheader("✏️ Edit Detail & Harga Barang")
-        if not df.empty:
+        if not df.empty and "Nama Barang" in df.columns:
             pilih_edit = st.selectbox("Pilih Barang yang Ingin Di-edit:", df["Nama Barang"].tolist(), key="select_edit")
             idx = df[df["Nama Barang"] == pilih_edit].index[0]
             row = df.loc[idx]
@@ -248,7 +246,7 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
     # KOREKSI TRANSAKSI
     with tab2:
         st.subheader("🔄 Koreksi Total Penjualan & Restok")
-        if not df.empty:
+        if not df.empty and "Nama Barang" in df.columns:
             pilih_koreksi = st.selectbox("Pilih Barang yang Ingin Dikoreksi:", df["Nama Barang"].tolist(), key="select_koreksi")
             idx_k = df[df["Nama Barang"] == pilih_koreksi].index[0]
             row_k = df.loc[idx_k]
@@ -268,7 +266,7 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
     # HAPUS BARANG
     with tab3:
         st.subheader("🗑️ Hapus Barang dari Sistem")
-        if not df.empty:
+        if not df.empty and "Nama Barang" in df.columns:
             pilih_hapus = st.selectbox("Pilih Barang yang Ingin Dihapus:", df["Nama Barang"].tolist(), key="select_hapus")
             if st.button("❌ Hapus Barang Ini", type="primary"):
                 df = df[df["Nama Barang"] != pilih_hapus].reset_index(drop=True)
