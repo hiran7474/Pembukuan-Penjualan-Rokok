@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-# Page config biar rapi & lebar
+# Page config
 st.set_page_config(page_title="Pembukuan Rokok", layout="wide")
 
 # ---------------------------------------------------------
@@ -51,7 +51,7 @@ fitur = st.sidebar.radio(
         "➕ Restok (Barang Masuk)", 
         "🛒 Penjualan (Barang Keluar)", 
         "⚙️ Kelola Master Barang", 
-        "🧹 Hapus/Edit Riwayat & Reset"
+        "🛠️ Edit / Hapus Barang & Reset"
     ]
 )
 
@@ -60,7 +60,6 @@ fitur = st.sidebar.radio(
 # ---------------------------------------------------------
 if fitur == "📊 Dashboard & Laporan Setoran":
     
-    # --- RINGKASAN UANG PENJUALAN ---
     st.subheader("💰 Ringkasan Uang Penjualan Terkumpul")
     m1, m2, m3 = st.columns(3)
     m1.metric("Total Cash Omset Penjualan", f"Rp {total_cash_omset:,.0f}".replace(",", "."))
@@ -69,14 +68,12 @@ if fitur == "📊 Dashboard & Laporan Setoran":
     
     st.markdown("---")
     
-    # --- RINCIAN PEMBAGIAN SETORAN ---
     st.subheader("🤝 Rincian Pembagian Setoran & Profit (50:50)")
     r1, r2, r3 = st.columns(3)
     r1.metric("🏦 SETORAN KE PEMILIK MODAL", f"Rp {setoran_pemilik:,.0f}".replace(",", "."))
     r2.metric("👤 Bagi Hasil Pemilik (50%)", f"Rp {bagi_hasil:,.0f}".replace(",", "."))
     r3.metric("🧑‍💼 Bagi Hasil Pengelola (50%)", f"Rp {bagian_pengelola:,.0f}".replace(",", "."))
     
-    # Kotak Penjelasan Kas (Biru)
     st.info(
         f"💡 **Penjelasan Kas:** Dari total uang tunai terkumpul (Rp {total_cash_omset:,.0f}), "
         f"sebesar **Rp {setoran_pemilik:,.0f}** disetorkan ke Pemilik Modal "
@@ -86,7 +83,6 @@ if fitur == "📊 Dashboard & Laporan Setoran":
     
     st.markdown("---")
     
-    # --- LAPORAN DETAIL TABEL ---
     st.subheader("📋 Laporan Detail Stok & Penjualan Per Produk")
     
     tabel_tampil = df[[
@@ -97,7 +93,6 @@ if fitur == "📊 Dashboard & Laporan Setoran":
     
     st.dataframe(tabel_tampil, use_container_width=True)
     
-    # Tombol Unduh File
     csv_data = tabel_tampil.to_csv(index=False).encode('utf-8')
     st.download_button(
         label="📥 Unduh Laporan Stok & Keuangan (CSV / Excel)",
@@ -108,25 +103,31 @@ if fitur == "📊 Dashboard & Laporan Setoran":
 
 elif fitur == "➕ Restok (Barang Masuk)":
     st.title("➕ Input Restok Barang Masuk")
-    pilihan_barang = st.selectbox("Pilih Barang:", df["Nama Barang"].tolist())
-    jumlah_masuk = st.number_input("Jumlah Masuk (Slop):", min_value=1, step=1)
-    
-    if st.button("Simpan Restok"):
-        idx = st.session_state.df_barang[st.session_state.df_barang["Nama Barang"] == pilihan_barang].index[0]
-        st.session_state.df_barang.at[idx, "Total Restok"] += jumlah_masuk
-        st.success(f"Berhasil menambahkan restok {jumlah_masuk} Slop untuk {pilihan_barang}!")
-        st.rerun()
+    if len(df) > 0:
+        pilihan_barang = st.selectbox("Pilih Barang:", df["Nama Barang"].tolist())
+        jumlah_masuk = st.number_input("Jumlah Masuk (Slop):", min_value=1, step=1)
+        
+        if st.button("Simpan Restok"):
+            idx = st.session_state.df_barang[st.session_state.df_barang["Nama Barang"] == pilihan_barang].index[0]
+            st.session_state.df_barang.at[idx, "Total Restok"] += jumlah_masuk
+            st.success(f"Berhasil menambahkan restok {jumlah_masuk} Slop untuk {pilihan_barang}!")
+            st.rerun()
+    else:
+        st.warning("Belum ada data barang.")
 
 elif fitur == "🛒 Penjualan (Barang Keluar)":
     st.title("🛒 Input Penjualan Barang Keluar")
-    pilihan_barang = st.selectbox("Pilih Barang:", df["Nama Barang"].tolist())
-    jumlah_keluar = st.number_input("Jumlah Keluar / Terjual (Slop):", min_value=1, step=1)
-    
-    if st.button("Simpan Penjualan"):
-        idx = st.session_state.df_barang[st.session_state.df_barang["Nama Barang"] == pilihan_barang].index[0]
-        st.session_state.df_barang.at[idx, "Total Keluar"] += jumlah_keluar
-        st.success(f"Berhasil mencatat penjualan {jumlah_keluar} Slop untuk {pilihan_barang}!")
-        st.rerun()
+    if len(df) > 0:
+        pilihan_barang = st.selectbox("Pilih Barang:", df["Nama Barang"].tolist())
+        jumlah_keluar = st.number_input("Jumlah Keluar / Terjual (Slop):", min_value=1, step=1)
+        
+        if st.button("Simpan Penjualan"):
+            idx = st.session_state.df_barang[st.session_state.df_barang["Nama Barang"] == pilihan_barang].index[0]
+            st.session_state.df_barang.at[idx, "Total Keluar"] += jumlah_keluar
+            st.success(f"Berhasil mencatat penjualan {jumlah_keluar} Slop untuk {pilihan_barang}!")
+            st.rerun()
+    else:
+        st.warning("Belum ada data barang.")
 
 elif fitur == "⚙️ Kelola Master Barang":
     st.title("⚙️ Kelola Master Barang Baru")
@@ -150,11 +151,59 @@ elif fitur == "⚙️ Kelola Master Barang":
             st.success(f"Barang {nama} berhasil ditambahkan!")
             st.rerun()
 
-elif fitur == "🧹 Hapus/Edit Riwayat & Reset":
-    st.title("🧹 Reset / Clear Data")
-    st.warning("Gunakan fitur ini jika ingin mengosongkan/mereset angka penjualan.")
-    if st.button("Reset Transaksi Penjualan & Restok"):
-        st.session_state.df_barang["Total Restok"] = 0
-        st.session_state.df_barang["Total Keluar"] = 0
-        st.success("Semua angka penjualan & restok berhasil di-reset!")
-        st.rerun()
+# ---------------------------------------------------------
+# 5. FITUR EDIT, HAPUS & RESET
+# ---------------------------------------------------------
+elif fitur == "🛠️ Edit / Hapus Barang & Reset":
+    st.title("🛠️ Pengelolaan Data Barang & Reset")
+    
+    tab1, tab2, tab3 = st.tabs(["✏️ Edit Data Barang", "🗑️ Hapus Barang", "🧹 Reset Transaksi"])
+    
+    # --- TAB 1: EDIT BARANG ---
+    with tab1:
+        st.subheader("✏️ Edit Detail & Harga Barang")
+        if len(df) > 0:
+            pilih_edit = st.selectbox("Pilih Barang yang Ingin Di-edit:", df["Nama Barang"].tolist(), key="select_edit")
+            idx = st.session_state.df_barang[st.session_state.df_barang["Nama Barang"] == pilih_edit].index[0]
+            row = st.session_state.df_barang.loc[idx]
+            
+            with st.form("form_edit_barang"):
+                edit_nama = st.text_input("Nama Barang:", value=row["Nama Barang"])
+                edit_kat = st.selectbox("Kategori:", ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"], index=["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"].index(row["Kategori"]) if row["Kategori"] in ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"] else 0)
+                edit_hb = st.number_input("Harga Beli (Modal):", min_value=0, value=int(row["Harga Beli"]), step=1000)
+                edit_hj = st.number_input("Harga Jual:", min_value=0, value=int(row["Harga Jual"]), step=1000)
+                edit_sa = st.number_input("Stok Awal:", min_value=0, value=int(row["Stok Awal"]), step=1)
+                
+                simpan_edit = st.form_submit_button("Simpan Perubahan")
+                if simpan_edit:
+                    st.session_state.df_barang.at[idx, "Nama Barang"] = edit_nama
+                    st.session_state.df_barang.at[idx, "Kategori"] = edit_kat
+                    st.session_state.df_barang.at[idx, "Harga Beli"] = edit_hb
+                    st.session_state.df_barang.at[idx, "Harga Jual"] = edit_hj
+                    st.session_state.df_barang.at[idx, "Stok Awal"] = edit_sa
+                    st.success(f"Data barang {edit_nama} berhasil diperbarui!")
+                    st.rerun()
+        else:
+            st.info("Tidak ada data barang untuk di-edit.")
+            
+    # --- TAB 2: HAPUS BARANG ---
+    with tab2:
+        st.subheader("🗑️ Hapus Barang dari Sistem")
+        if len(df) > 0:
+            pilih_hapus = st.selectbox("Pilih Barang yang Ingin Dihapus:", df["Nama Barang"].tolist(), key="select_hapus")
+            if st.button("❌ Hapus Barang Ini", type="primary"):
+                st.session_state.df_barang = st.session_state.df_barang[st.session_state.df_barang["Nama Barang"] != pilih_hapus].reset_index(drop=True)
+                st.success(f"Barang {pilih_hapus} telah berhasil dihapus!")
+                st.rerun()
+        else:
+            st.info("Tidak ada data barang untuk dihapus.")
+            
+    # --- TAB 3: RESET TRANSAKSI ---
+    with tab3:
+        st.subheader("🧹 Reset Angka Transaksi")
+        st.warning("Fitur ini akan mengosongkan angka Restok dan Penjualan menjadi 0 tanpa menghapus daftar barangnya.")
+        if st.button("Reset Semua Transaksi Penjualan & Restok"):
+            st.session_state.df_barang["Total Restok"] = 0
+            st.session_state.df_barang["Total Keluar"] = 0
+            st.success("Semua angka penjualan & restok berhasil di-reset ke 0!")
+            st.rerun()
