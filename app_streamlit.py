@@ -11,7 +11,7 @@ st.set_page_config(page_title="Pembukuan Penjualan Rokok", layout="wide")
 SPREADSHEET_ID = "1DPwxjMcczOer5CUu2aknat7SLxAU-da-ECYmY67CcbI"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv"
 
-# ⚠️ TEMPELKAN LINK WEB APP DARI GOOGLE APPS SCRIPT DI SINI:
+# Link Web App Google Apps Script
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxsXytoDYrX5oXMT9LXQ-4uUZUXCPPAfJo-dt7NqjCZFUhPIjID54ulrq_Pq0qnRqLq/exec"
 
 # ---------------------------------------------------------
@@ -185,8 +185,13 @@ elif fitur == "🛒 Penjualan (Barang Keluar)":
 # ---------------------------------------------------------
 elif fitur == "⚙️ Kelola Master Barang":
     st.title("⚙️ Tambah Master Barang Baru")
-    with st.form("form_barang_baru"):
-        kode = st.text_input("Kode Barang:", value=f"BRG00{len(df)+1}")
+    
+    # Mencegah ID terduplikasi
+    next_id = len(df) + 1
+    kode_default = f"BRG{next_id:03d}"
+    
+    with st.form("form_barang_baru", clear_on_submit=True):
+        kode = st.text_input("Kode Barang:", value=kode_default)
         nama = st.text_input("Nama Barang:")
         kategori = st.selectbox("Kategori:", ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"])
         harga_beli = st.number_input("Harga Beli Modal (per Bungkus):", min_value=0, step=1000, format="%d")
@@ -195,19 +200,31 @@ elif fitur == "⚙️ Kelola Master Barang":
         satuan = st.text_input("Satuan:", value="Bungkus")
         
         submitted = st.form_submit_button("Tambah Barang Ke Google Sheets")
+        
         if submitted:
-            if not nama:
+            if not nama.strip():
                 st.error("Nama Barang tidak boleh kosong!")
+            elif not df.empty and nama.strip().lower() in df["Nama Barang"].astype(str).str.strip().str.lower().values:
+                st.warning(f"Barang dengan nama '{nama}' sudah ada di database!")
             else:
                 baris_baru = {
-                    "Kode": kode, "Nama Barang": nama, "Kategori": kategori, 
-                    "Harga Beli": harga_beli, "Harga Jual": harga_jual, 
-                    "Stok Awal": stok_awal, "Total Restok": 0, "Total Keluar": 0, "Satuan": satuan
+                    "Kode": kode, 
+                    "Nama Barang": nama.strip(), 
+                    "Kategori": kategori, 
+                    "Harga Beli": harga_beli, 
+                    "Harga Jual": harga_jual, 
+                    "Stok Awal": stok_awal, 
+                    "Total Restok": 0, 
+                    "Total Keluar": 0, 
+                    "Satuan": satuan
                 }
+                
                 df_update = pd.concat([df, pd.DataFrame([baris_baru])], ignore_index=True)
-                if save_data(df_update[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]]):
-                    st.success(f"Barang {nama} berhasil ditambahkan!")
-                    st.rerun()
+                
+                with st.spinner("Menyimpan ke Google Sheets..."):
+                    if save_data(df_update[["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]]):
+                        st.success(f"Barang {nama} berhasil ditambahkan!")
+                        st.rerun()
 
 # ---------------------------------------------------------
 # 5. EDIT, HAPUS & RESET
