@@ -92,14 +92,12 @@ if fitur == "📊 Dashboard & Laporan Setoran":
         "Total Omset", "Total HPP (Modal)", "Laba Kotor Total", "Satuan"
     ]].copy()
     
-    # Tampilan yang sudah diformat dengan titik (.)
     tabel_formatted = tabel_tampil.copy()
     for col in ["Harga Beli", "Harga Jual", "Total Omset", "Total HPP (Modal)", "Laba Kotor Total"]:
         tabel_formatted[col] = tabel_formatted[col].apply(lambda x: f"Rp {x:,.0f}".replace(",", "."))
     
     st.dataframe(tabel_formatted, use_container_width=True)
     
-    # Download file menggunakan data asli angka murni agar tidak merusak rumus Excel
     csv_data = tabel_tampil.to_csv(index=False).encode('utf-8')
     st.download_button(
         label="📥 Unduh Laporan Stok & Keuangan (CSV / Excel)",
@@ -142,8 +140,14 @@ elif fitur == "⚙️ Kelola Master Barang":
         kode = st.text_input("Kode Barang:", value=f"BRG00{len(df)+1}")
         nama = st.text_input("Nama Barang:")
         kategori = st.selectbox("Kategori:", ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"])
-        harga_beli = st.number_input("Harga Beli Modal (per Bungkus):", min_value=0, step=1000)
-        harga_jual = st.number_input("Harga Jual (per Bungkus):", min_value=0, step=1000)
+        harga_beli = st.number_input("Harga Beli Modal (per Bungkus):", min_value=0, step=1000, format="%d")
+        if harga_beli > 0:
+            st.caption(f"💵 Tampilan Harga Beli: **Rp {harga_beli:,.0f}**".replace(",", "."))
+            
+        harga_jual = st.number_input("Harga Jual (per Bungkus):", min_value=0, step=1000, format="%d")
+        if harga_jual > 0:
+            st.caption(f"💵 Tampilan Harga Jual: **Rp {harga_jual:,.0f}**".replace(",", "."))
+            
         stok_awal = st.number_input("Stok Awal (Bungkus):", min_value=0, step=1)
         satuan = st.text_input("Satuan:", value="Bungkus")
         
@@ -178,8 +182,13 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
                 edit_kode = st.text_input("Kode Barang:", value=row["Kode"])
                 edit_nama = st.text_input("Nama Barang:", value=row["Nama Barang"])
                 edit_kat = st.selectbox("Kategori:", ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"], index=["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"].index(row["Kategori"]) if row["Kategori"] in ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"] else 0)
-                edit_hb = st.number_input("Harga Beli Modal:", min_value=0, value=int(row["Harga Beli"]), step=1000)
-                edit_hj = st.number_input("Harga Jual:", min_value=0, value=int(row["Harga Jual"]), step=1000)
+                
+                edit_hb = st.number_input("Harga Beli Modal:", min_value=0, value=int(row["Harga Beli"]), step=1000, format="%d")
+                st.caption(f"💵 Tampilan Modal: **Rp {edit_hb:,.0f}**".replace(",", "."))
+                
+                edit_hj = st.number_input("Harga Jual:", min_value=0, value=int(row["Harga Jual"]), step=1000, format="%d")
+                st.caption(f"💵 Tampilan Harga Jual: **Rp {edit_hj:,.0f}**".replace(",", "."))
+                
                 edit_sa = st.number_input("Stok Awal (Bungkus):", min_value=0, value=int(row["Stok Awal"]), step=1)
                 edit_sat = st.text_input("Satuan:", value=row["Satuan"])
                 
@@ -204,8 +213,15 @@ elif fitur == "🛠️ Edit / Hapus Barang & Reset":
             t_kode = st.text_input("Kode Barang:", value=f"BRG00{len(df)+1}", key="t_kode")
             t_nama = st.text_input("Nama Barang:", key="t_nama")
             t_kategori = st.selectbox("Kategori:", ["Rokok Filter", "Rokok Kretek", "Rokok Putih", "Lainnya"], key="t_kat")
-            t_harga_beli = st.number_input("Harga Beli Modal (per Bungkus):", min_value=0, step=1000, key="t_hb")
-            t_harga_jual = st.number_input("Harga Jual (per Bungkus):", min_value=0, step=1000, key="t_hj")
+            
+            t_harga_beli = st.number_input("Harga Beli Modal (per Bungkus):", min_value=0, step=1000, format="%d", key="t_hb")
+            if t_harga_beli > 0:
+                st.caption(f"💵 Tampilan Modal: **Rp {t_harga_beli:,.0f}**".replace(",", "."))
+                
+            t_harga_jual = st.number_input("Harga Jual (per Bungkus):", min_value=0, step=1000, format="%d", key="t_hj")
+            if t_harga_jual > 0:
+                st.caption(f"💵 Tampilan Harga Jual: **Rp {t_harga_jual:,.0f}**".replace(",", "."))
+                
             t_stok_awal = st.number_input("Stok Awal (Bungkus):", min_value=0, step=1, key="t_sa")
             t_satuan = st.text_input("Satuan:", value="Bungkus", key="t_sat")
             
