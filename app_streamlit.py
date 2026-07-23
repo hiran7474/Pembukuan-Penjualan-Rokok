@@ -7,46 +7,55 @@ import requests
 # ---------------------------------------------------------
 st.set_page_config(page_title="Pembukuan Penjualan Rokok", layout="wide")
 
-import time
-
-# ID Spreadsheet & URL Web App Google (Sudah Sinkron)
-# ID Spreadsheet yang benar
-SPREADSHEET_ID = "1E0CVblmds7joWaj1YswabAulzpaAbOLXVnRyTVNs2Ms"
-
-# Format URL CSV standar Google Sheets yang dijamin tidak 404
-CSV_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv"
-
-# Link Web App Google Apps Script Terbaru
+# Link Web App Google Apps Script Terbaru Kamu
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz9lGFts1yEQlmfJ4LnB_HK53s5CdBD_n8cps8onMpyWwszFtxheewpQkyOtZOQ7XFt/exec"
 
 # ---------------------------------------------------------
-# KONEKSI GOOGLE SHEETS VIA WEB APP (DENGAN CACHE CLEAR)
+# KONEKSI DATA VIA WEB APP (GET & POST)
 # ---------------------------------------------------------
-@st.cache_data(ttl=2) # Cache diperbarui tiap 2 detik agar data selalu fresh
+@st.cache_data(ttl=2)
 def load_data():
     try:
-        df = pd.read_csv(CSV_URL)
-        
-        # Bersihkan nama kolom dari spasi
-        df.columns = df.columns.str.strip()
-        
-        # Jika kolom penting tidak ada, buat dataframe kosong yang benar
-        required_cols = ["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]
-        for col in required_cols:
-            if col not in df.columns:
-                df[col] = 0 if "Harga" in col or "Stok" in col or "Total" in col else ""
-                
-        # Hanya pastikan baris yang memiliki Kode tidak kosong
-        df = df.dropna(subset=["Kode"])
-        
-        # Konversi angka dengan aman
-        numeric_cols = ["Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar"]
-        for col in numeric_cols:
-            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+        response = requests.get(WEB_APP_URL)
+        if response.status_code == 200:
+            raw_data = response.json()
+            if not raw_data or len(raw_data) < 1:
+                return pd.DataFrame(columns=[
+                    "Kode", "Nama Barang", "Kategori", "Harga Beli", 
+                    "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"
+                ])
             
-        return df
+            # Baris pertama sebagai header, selebihnya sebagai isi data
+            headers = [str(h).strip() for h in raw_data[0]]
+            rows = raw_data[1:] if len(raw_data) > 1 else []
+            
+            if not rows:
+                return pd.DataFrame(columns=headers)
+                
+            df = pd.DataFrame(rows, columns=headers)
+            
+            # Bersihkan nama kolom dari spasi tersembunyi
+            df.columns = df.columns.str.strip()
+            
+            if "Kode" in df.columns:
+                df = df.dropna(subset=["Kode"])
+                df = df[df["Kode"].astype(str).str.strip() != ""]
+            
+            # Bersihkan string teks dari spasi tak kasat mata
+            for col in ["Kode", "Nama Barang", "Kategori", "Satuan"]:
+                if col in df.columns:
+                    df[col] = df[col].astype(str).str.strip()
+            
+            # Konversi kolom angka dengan aman
+            numeric_cols = ["Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar"]
+            for col in numeric_cols:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+            return df
+        else:
+            return pd.DataFrame()
     except Exception as e:
-        st.error(f"Error memuat data: {e}")
+        st.error(f"Gagal memuat data dari Web App: {e}")
         return pd.DataFrame(columns=[
             "Kode", "Nama Barang", "Kategori", "Harga Beli", 
             "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"
@@ -54,7 +63,8 @@ def load_data():
 
 def save_data(df_to_save):
     # Bersihkan baris kosong/NaN sebelum dikirim ke JSON
-    df_to_save = df_to_save.dropna(subset=["Kode", "Nama Barang"], how="any")
+    if "Kode" in df_to_save.columns:
+        df_to_save = df_to_save.dropna(subset=["Kode"], how="any")
     df_to_save = df_to_save.fillna("")
     
     data_matrix = [df_to_save.columns.values.tolist()] + df_to_save.values.tolist()
@@ -64,7 +74,7 @@ def save_data(df_to_save):
             st.cache_data.clear() # Bersihkan cache agar data langsung ter-update
             return True
         else:
-            st.error("Gagal menyimpan ke Google Sheets. Pastikan Web App URL sudah benar.")
+            st.error("Gagal menyimpan ke Google Sheets. Periksa kembali Web App URL.")
             return False
     except Exception as e:
         st.error(f"Terjadi kesalahan koneksi: {e}")
