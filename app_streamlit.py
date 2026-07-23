@@ -12,7 +12,7 @@ SPREADSHEET_ID = "1E0CVblMDs7joWaj1YswabAulzpaAbOLXVnRyTVNs2Ms"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv"
 
 # Link Web App Google Apps Script
-WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxsXytoDYrX5oXMT9LXQ-4uUZUXCPPAfJo-dt7NqjCZFUhPIjID54ulrq_Pq0qnRqLq/exec"
+WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz9lGFts1yEQlmfJ4LnB_HK53s5CdBD_n8cps8onMpyWwszFtxheewpQkyOtZOQ7XFt/exec"
 
 # ---------------------------------------------------------
 # KONEKSI GOOGLE SHEETS VIA WEB APP
