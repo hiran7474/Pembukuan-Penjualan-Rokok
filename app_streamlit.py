@@ -21,8 +21,17 @@ WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz9lGFts1yEQlmfJ4LnB_HK53
 def load_data():
     try:
         df = pd.read_csv(CSV_URL)
+        
+        # Bersihkan nama kolom dari spasi tersembunyi
+        df.columns = df.columns.str.strip()
+        
         # Hapus baris kosong/NaN pada kolom kunci
         df = df.dropna(subset=["Kode", "Nama Barang"], how="any")
+        
+        # Bersihkan string teks dari spasi tak kasat mata
+        for col in ["Kode", "Nama Barang", "Kategori", "Satuan"]:
+            if col in df.columns:
+                df[col] = df[col].astype(str).str.strip()
         
         numeric_cols = ["Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar"]
         for col in numeric_cols:
