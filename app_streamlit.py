@@ -25,23 +25,26 @@ def load_data():
     try:
         df = pd.read_csv(CSV_URL)
         
-        # Bersihkan nama kolom dari spasi tersembunyi
+        # Bersihkan nama kolom dari spasi
         df.columns = df.columns.str.strip()
         
-        # Hapus baris kosong/NaN pada kolom kunci
-        df = df.dropna(subset=["Kode", "Nama Barang"], how="any")
+        # Jika kolom penting tidak ada, buat dataframe kosong yang benar
+        required_cols = ["Kode", "Nama Barang", "Kategori", "Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"]
+        for col in required_cols:
+            if col not in df.columns:
+                df[col] = 0 if "Harga" in col or "Stok" in col or "Total" in col else ""
+                
+        # Hanya pastikan baris yang memiliki Kode tidak kosong
+        df = df.dropna(subset=["Kode"])
         
-        # Bersihkan string teks dari spasi tak kasat mata
-        for col in ["Kode", "Nama Barang", "Kategori", "Satuan"]:
-            if col in df.columns:
-                df[col] = df[col].astype(str).str.strip()
-        
+        # Konversi angka dengan aman
         numeric_cols = ["Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar"]
         for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+            df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+            
         return df
-    except Exception:
+    except Exception as e:
+        st.error(f"Error memuat data: {e}")
         return pd.DataFrame(columns=[
             "Kode", "Nama Barang", "Kategori", "Harga Beli", 
             "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"
