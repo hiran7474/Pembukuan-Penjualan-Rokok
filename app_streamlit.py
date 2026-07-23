@@ -8,7 +8,7 @@ import requests
 st.set_page_config(page_title="Pembukuan Penjualan Rokok", layout="wide")
 
 # ID Spreadsheet & URL Web App Google
-SPREADSHEET_ID = "1DPwxjMcczOer5CUu2aknat7SLxAU-da-ECYmY67CcbI"
+SPREADSHEET_ID = "1E0CVblMDs7joWaj1YswabAulzpaAbOLXVnRyTVNs2Ms"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv"
 
 # Link Web App Google Apps Script
