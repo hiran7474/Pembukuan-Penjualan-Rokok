@@ -10,7 +10,7 @@ st.set_page_config(page_title="Pembukuan Penjualan Rokok", layout="wide")
 import time
 
 # ID Spreadsheet & URL Web App Google (Sudah Sinkron)
-SPREADSHEET_ID = "1E0CVblMDs7joWaj1YswabAulzpaAbOLXVnRyTVNs2Ms"
+SPREADSHEET_ID = "1E0CVblmds7joWaj1YswabAulzpaAbOLXVnRyTVNs2Ms"
 # Tambahkan parameter timestamp agar link dianggap baru terus oleh server
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&t={int(time.time())}"
 
