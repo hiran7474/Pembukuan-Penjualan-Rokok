@@ -7,14 +7,13 @@ import requests
 # ---------------------------------------------------------
 st.set_page_config(page_title="Pembukuan Penjualan Rokok", layout="wide")
 
-# Link Web App Google Apps Script Terbaru Kamu
+# Link Web App Google Apps Script Kamu
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz9lGFts1yEQlmfJ4LnB_HK53s5CdBD_n8cps8onMpyWwszFtxheewpQkyOtZOQ7XFt/exec"
 
 # ---------------------------------------------------------
-# KONEKSI DATA VIA WEB APP (GET & POST)
+# FUNGSI LOAD & SAVE DATA (DENGAN SESSION STATE AGAR CEPAT)
 # ---------------------------------------------------------
-@st.cache_data(ttl=2)
-def load_data():
+def fetch_data_from_cloud():
     try:
         response = requests.get(WEB_APP_URL)
         if response.status_code == 200:
@@ -25,7 +24,6 @@ def load_data():
                     "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"
                 ])
             
-            # Baris pertama sebagai header, selebihnya sebagai isi data
             headers = [str(h).strip() for h in raw_data[0]]
             rows = raw_data[1:] if len(raw_data) > 1 else []
             
@@ -33,20 +31,16 @@ def load_data():
                 return pd.DataFrame(columns=headers)
                 
             df = pd.DataFrame(rows, columns=headers)
-            
-            # Bersihkan nama kolom dari spasi tersembunyi
             df.columns = df.columns.str.strip()
             
             if "Kode" in df.columns:
                 df = df.dropna(subset=["Kode"])
                 df = df[df["Kode"].astype(str).str.strip() != ""]
             
-            # Bersihkan string teks dari spasi tak kasat mata
             for col in ["Kode", "Nama Barang", "Kategori", "Satuan"]:
                 if col in df.columns:
                     df[col] = df[col].astype(str).str.strip()
             
-            # Konversi kolom angka dengan aman
             numeric_cols = ["Harga Beli", "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar"]
             for col in numeric_cols:
                 if col in df.columns:
@@ -55,14 +49,19 @@ def load_data():
         else:
             return pd.DataFrame()
     except Exception as e:
-        st.error(f"Gagal memuat data dari Web App: {e}")
         return pd.DataFrame(columns=[
             "Kode", "Nama Barang", "Kategori", "Harga Beli", 
             "Harga Jual", "Stok Awal", "Total Restok", "Total Keluar", "Satuan"
         ])
 
+# Inisialisasi Session State agar data disimpan di memori lokal (Anti Lemot)
+if 'data_barang' not in st.session_state:
+    st.session_state.data_barang = fetch_data_from_cloud()
+
+df_barang = st.session_state.data_barang
+df = df_barang.copy()
+
 def save_data(df_to_save):
-    # Bersihkan baris kosong/NaN sebelum dikirim ke JSON
     if "Kode" in df_to_save.columns:
         df_to_save = df_to_save.dropna(subset=["Kode"], how="any")
     df_to_save = df_to_save.fillna("")
@@ -71,18 +70,14 @@ def save_data(df_to_save):
     try:
         response = requests.post(WEB_APP_URL, json=data_matrix)
         if response.status_code == 200:
-            st.cache_data.clear() # Bersihkan cache agar data langsung ter-update
+            st.session_state.data_barang = df_to_save.copy() # Perbarui session lokal seketika
             return True
         else:
-            st.error("Gagal menyimpan ke Google Sheets. Periksa kembali Web App URL.")
+            st.error("Gagal menyimpan ke Google Sheets.")
             return False
     except Exception as e:
         st.error(f"Terjadi kesalahan koneksi: {e}")
         return False
-
-# Load Data Terbaru
-df_barang = load_data()
-df = df_barang.copy()
 
 # ---------------------------------------------------------
 # KALKULASI FINANSIAL & STOK
