@@ -10,9 +10,11 @@ st.set_page_config(page_title="Pembukuan Penjualan Rokok", layout="wide")
 import time
 
 # ID Spreadsheet & URL Web App Google (Sudah Sinkron)
+# ID Spreadsheet yang benar
 SPREADSHEET_ID = "1E0CVblmds7joWaj1YswabAulzpaAbOLXVnRyTVNs2Ms"
-# Tambahkan parameter timestamp agar link dianggap baru terus oleh server
-CSV_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv&t={int(time.time())}"
+
+# Format URL CSV standar Google Sheets yang dijamin tidak 404
+CSV_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/gviz/tq?tqx=out:csv"
 
 # Link Web App Google Apps Script Terbaru
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz9lGFts1yEQlmfJ4LnB_HK53s5CdBD_n8cps8onMpyWwszFtxheewpQkyOtZOQ7XFt/exec"
