@@ -7,16 +7,17 @@ import requests
 # ---------------------------------------------------------
 st.set_page_config(page_title="Pembukuan Penjualan Rokok", layout="wide")
 
-# ID Spreadsheet & URL Web App Google
+# ID Spreadsheet & URL Web App Google (Sudah Sinkron)
 SPREADSHEET_ID = "1E0CVblMDs7joWaj1YswabAulzpaAbOLXVnRyTVNs2Ms"
 CSV_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/export?format=csv"
 
-# Link Web App Google Apps Script
+# Link Web App Google Apps Script Terbaru
 WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz9lGFts1yEQlmfJ4LnB_HK53s5CdBD_n8cps8onMpyWwszFtxheewpQkyOtZOQ7XFt/exec"
 
 # ---------------------------------------------------------
-# KONEKSI GOOGLE SHEETS VIA WEB APP
+# KONEKSI GOOGLE SHEETS VIA WEB APP (DENGAN CACHE CLEAR)
 # ---------------------------------------------------------
+@st.cache_data(ttl=2) # Cache diperbarui tiap 2 detik agar data selalu fresh
 def load_data():
     try:
         df = pd.read_csv(CSV_URL)
@@ -43,7 +44,7 @@ def save_data(df_to_save):
     try:
         response = requests.post(WEB_APP_URL, json=data_matrix)
         if response.status_code == 200:
-            st.cache_data.clear()
+            st.cache_data.clear() # Bersihkan cache agar data langsung ter-update
             return True
         else:
             st.error("Gagal menyimpan ke Google Sheets. Pastikan Web App URL sudah benar.")
@@ -52,7 +53,7 @@ def save_data(df_to_save):
         st.error(f"Terjadi kesalahan koneksi: {e}")
         return False
 
-# Load Data
+# Load Data Terbaru
 df_barang = load_data()
 df = df_barang.copy()
 
@@ -93,7 +94,7 @@ fitur = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.caption("👨‍💻 **Pengelola:** Hiran © 2026")
+st.sidebar.caption("👨‍💻 **Admin:** Hiran © 2026")
 
 # ---------------------------------------------------------
 # 1. HALAMAN DASHBOARD
